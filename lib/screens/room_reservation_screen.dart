@@ -11,6 +11,7 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
   String? _selectedRoomNumber;
   String? _selectedDate;
   String? _selectedLecturer;
+  List<Map<String, String>> _reservations = [];
 
   @override
   Widget build(BuildContext context) {
@@ -168,10 +169,43 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                   ElevatedButton(
                     onPressed: () {
                       if (_selectedBuilding != null && _selectedRoomNumber != null && _selectedDate != null && _selectedLecturer != null) {
-                        // Save the date logic
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Reservation saved successfully')),
-                        );
+                        // Check for duplicate reservations
+                        bool isDuplicate = _reservations.any((reservation) =>
+                          reservation['building'] == _selectedBuilding &&
+                          reservation['room'] == _selectedRoomNumber &&
+                          reservation['date'] == _selectedDate);
+
+                        if (isDuplicate) {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('Duplicate Reservation'),
+                                content: Text('This reservation already exists.'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('OK'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } else {
+                          setState(() {
+                            _reservations.add({
+                              'building': _selectedBuilding!,
+                              'room': _selectedRoomNumber!,
+                              'date': _selectedDate!,
+                              'lecturer': _selectedLecturer!,
+                            });
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Reservation saved successfully')),
+                          );
+                        }
                       } else {
                         // Show a message if not all fields are selected
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -231,6 +265,37 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                     ),
                   ),
                 ],
+              ),
+              SizedBox(height: 20),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _reservations.map((reservation) {
+                      return Container(
+                        width: MediaQuery.of(context).size.width,
+                        child: Card(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Building: ${reservation['building']}", style: TextStyle(color: Colors.black87)),
+                                Text("Room: ${reservation['room']}", style: TextStyle(color: Colors.black87)),
+                                Text("Date: ${reservation['date']}", style: TextStyle(color: Colors.black87)),
+                                Text("Lecturer: ${reservation['lecturer']}", style: TextStyle(color: Colors.black87)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
             ],
           ),

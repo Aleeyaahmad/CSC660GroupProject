@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Add this import for date formatting
 
 class EditTaskScreen extends StatefulWidget {
   final String type;
@@ -24,7 +25,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   late String _type;
   late String _title;
   late String _description;
-  late String _dueDate;
+  late DateTime _dueDate;
   late String _imageUrl;
   bool _reminder = false;
 
@@ -36,8 +37,22 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     _type = _types.contains(widget.type) ? widget.type : _types.first;
     _title = widget.title;
     _description = widget.description;
-    _dueDate = widget.dueDate;
+    _dueDate = DateTime.tryParse(widget.dueDate) ?? DateTime.now();
     _imageUrl = widget.imageUrl;
+  }
+
+  Future<void> _selectDueDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dueDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _dueDate) {
+      setState(() {
+        _dueDate = picked;
+      });
+    }
   }
 
   @override
@@ -134,7 +149,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               ),
               SizedBox(height: 10),
               TextFormField(
-                initialValue: _dueDate,
+                readOnly: true,
+                onTap: () => _selectDueDate(context),
                 decoration: InputDecoration(
                   labelText: 'Due Date',
                   filled: true,
@@ -145,23 +161,15 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                   ),
                   suffixIcon: Icon(Icons.calendar_today, color: Colors.black),
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    _dueDate = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a due date';
-                  }
-                  return null;
-                },
+                controller: TextEditingController(
+                  text: DateFormat('yyyy-MM-dd').format(_dueDate),
+                ),
               ),
               SizedBox(height: 10),
               TextFormField(
                 initialValue: _imageUrl,
                 decoration: InputDecoration(
-                  labelText: 'Image',
+                  labelText: 'Image URL',
                   filled: true,
                   fillColor: Colors.grey[300],
                   border: OutlineInputBorder(
@@ -199,8 +207,14 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    // Update task logic here
-                    Navigator.pop(context);
+                    Navigator.pop(context, {
+                      'type': _type,
+                      'title': _title,
+                      'description': _description,
+                      'dueDate': DateFormat('yyyy-MM-dd').format(_dueDate),
+                      'imageUrl': _imageUrl,
+                      'reminder': _reminder.toString(),
+                    });
                   }
                 },
                 child: Text('Update', style: TextStyle(color: Colors.white)),
@@ -216,8 +230,28 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               SizedBox(height: 10),
               ElevatedButton(
                 onPressed: () {
-                  // Delete logic here
-                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('Confirm Deletion'),
+                      content: Text('Are you sure you want to delete this task?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context); // Close dialog
+                          },
+                          child: Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context); // Close dialog
+                            Navigator.pop(context, 'delete'); // Return 'delete' result
+                          },
+                          child: Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
                 },
                 child: Text('Delete', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(

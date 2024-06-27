@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'edit_task_screen.dart'; // Add this import
+import 'edit_task_screen.dart';
 
 class AssignmentScreen extends StatefulWidget {
   @override
   _AssignmentScreenState createState() => _AssignmentScreenState();
 }
 
-class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerProviderStateMixin {
+class _AssignmentScreenState extends State<AssignmentScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  List<Map<String, dynamic>> assignments = [];
+  List<Map<String, dynamic>> exams = [];
+  List<Map<String, dynamic>> quizzes = [];
 
   @override
   void initState() {
@@ -21,16 +25,153 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
     super.dispose();
   }
 
-  void _navigateToEditTask(String type, String title, String description, String dueDate, String imageUrl) {
-    Navigator.push(
+  void _navigateToCreateAssignment() async {
+    final newItem = await Navigator.pushNamed(context, '/create_assignment');
+    if (newItem != null && newItem is Map<String, dynamic>) {
+      setState(() {
+        switch (newItem['type']) {
+          case 'Assignment':
+            assignments.add(newItem);
+            break;
+          case 'Exam':
+            exams.add(newItem);
+            break;
+          case 'Quiz':
+            quizzes.add(newItem);
+            break;
+        }
+      });
+      _showSnackBarMessage('Successfully created!');
+    }
+  }
+
+  void _navigateToEditTask(Map<String, dynamic> item) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditTaskScreen(
-          type: type,
-          title: title,
-          description: description,
-          dueDate: dueDate,
-          imageUrl: imageUrl,
+          type: item['type'],
+          title: item['title'],
+          description: item['description'],
+          dueDate: item['dueDate'],
+          imageUrl: item['imageUrl'],
+        ),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _removeOldItem(item);
+        _addNewItem(result);
+      });
+      _showSnackBarMessage('Successfully updated!');
+    } else if (result == 'delete') {
+      setState(() {
+        _removeOldItem(item);
+      });
+      _showSnackBarMessage('Successfully deleted!');
+    }
+  }
+
+  void _removeOldItem(Map<String, dynamic> oldItem) {
+    switch (oldItem['type']) {
+      case 'Assignment':
+        assignments.removeWhere((item) => item['title'] == oldItem['title']);
+        break;
+      case 'Exam':
+        exams.removeWhere((item) => item['title'] == oldItem['title']);
+        break;
+      case 'Quiz':
+        quizzes.removeWhere((item) => item['title'] == oldItem['title']);
+        break;
+    }
+  }
+
+  void _addNewItem(Map<String, dynamic> newItem) {
+    switch (newItem['type']) {
+      case 'Assignment':
+        assignments.add(newItem);
+        break;
+      case 'Exam':
+        exams.add(newItem);
+        break;
+      case 'Quiz':
+        quizzes.add(newItem);
+        break;
+    }
+  }
+
+  void _showSnackBarMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  Widget _buildAssignmentList() {
+    return ListView(
+      padding: EdgeInsets.all(16.0),
+      children: assignments.map((assignment) {
+        return _buildListItem(assignment);
+      }).toList(),
+    );
+  }
+
+  Widget _buildExamList() {
+    return ListView(
+      padding: EdgeInsets.all(16.0),
+      children: exams.map((exam) {
+        return _buildListItem(exam);
+      }).toList(),
+    );
+  }
+
+  Widget _buildQuizList() {
+    return ListView(
+      padding: EdgeInsets.all(16.0),
+      children: quizzes.map((quiz) {
+        return _buildListItem(quiz);
+      }).toList(),
+    );
+  }
+
+  Widget _buildListItem(Map<String, dynamic> item) {
+    return GestureDetector(
+      onTap: () {
+        _navigateToEditTask(item);
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 8.0),
+        padding: EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4.0,
+              spreadRadius: 2.0,
+              offset: Offset(2, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item['title'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            SizedBox(height: 5),
+            Text(item['description'], style: TextStyle(fontSize: 14, color: Colors.black54)),
+            SizedBox(height: 5),
+            Text(item['dueDate'], style: TextStyle(fontSize: 12, color: Colors.black45)),
+            SizedBox(height: 5),
+            if (item['imageUrl'] != null && item['imageUrl'].isNotEmpty)
+              Image.network(item['imageUrl']),
+            if (item['reminder'] == true)
+              Text('Reminder set', style: TextStyle(fontSize: 12, color: Colors.red)),
+          ],
         ),
       ),
     );
@@ -41,10 +182,10 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
     return Scaffold(
       appBar: AppBar(
         title: Text('Assignments & Exams', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue[800], // Use the same blue as RoomReservationScreen for consistency
+        backgroundColor: Colors.blue[800],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.orangeAccent, // Orange indicator for tabs
+          indicatorColor: Colors.orangeAccent,
           tabs: [
             Tab(text: 'Assignments'),
             Tab(text: 'Exams'),
@@ -73,83 +214,11 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/create_assignment');
-        },
+        onPressed: _navigateToCreateAssignment,
         child: Icon(Icons.add, color: Colors.white),
-        backgroundColor: Colors.orangeAccent, // Orange color for FAB
+        backgroundColor: Colors.orangeAccent,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
-
-  Widget _buildAssignmentList() {
-    return ListView(
-      padding: EdgeInsets.all(16.0),
-      children: [
-        _buildListItem('Assignment #1', 'Description for Assignment #1', '30/5/2024', 'image_url_1'),
-        _buildListItem('Assignment #2', 'Description for Assignment #2', '31/5/2024', 'image_url_2'),
-        _buildListItem('Assignment #3', 'Description for Assignment #3', '1/6/2024', 'image_url_3'),
-        _buildListItem('Assignment #4', 'Description for Assignment #4', '2/6/2024', 'image_url_4'),
-        _buildListItem('Assignment #5', 'Description for Assignment #5', '3/6/2024', 'image_url_5'),
-        // Add more list items as needed
-      ],
-    );
-  }
-
-  Widget _buildExamList() {
-    return ListView(
-      padding: EdgeInsets.all(16.0),
-      children: [
-        _buildListItem('Exam #1', 'Description for Exam #1', '4/6/2024', 'image_url_1'),
-        _buildListItem('Exam #2', 'Description for Exam #2', '5/6/2024', 'image_url_2'),
-        // Add more list items as needed
-      ],
-    );
-  }
-
-  Widget _buildQuizList() {
-    return ListView(
-      padding: EdgeInsets.all(16.0),
-      children: [
-        _buildListItem('Quiz #1', 'Description for Quiz #1', '6/6/2024', 'image_url_1'),
-        _buildListItem('Quiz #2', 'Description for Quiz #2', '7/6/2024', 'image_url_2'),
-        // Add more list items as needed
-      ],
-    );
-  }
-
-  Widget _buildListItem(String title, String description, String date, String imageUrl) {
-    return GestureDetector(
-      onTap: () {
-        _navigateToEditTask('Task', title, description, date, imageUrl);
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 8.0),
-        padding: EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4.0,
-              spreadRadius: 2.0,
-              offset: Offset(2, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-            SizedBox(height: 5),
-            Text(description, style: TextStyle(fontSize: 14, color: Colors.black54)),
-            SizedBox(height: 5),
-            Text(date, style: TextStyle(fontSize: 12, color: Colors.black45)),
-          ],
-        ),
-      ),
     );
   }
 }

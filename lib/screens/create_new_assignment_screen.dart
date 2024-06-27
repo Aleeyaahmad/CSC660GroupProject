@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 class CreateNewAssignmentScreen extends StatefulWidget {
   @override
-  _CreateNewAssignmentScreenState createState() => _CreateNewAssignmentScreenState();
+  _CreateNewAssignmentScreenState createState() =>
+      _CreateNewAssignmentScreenState();
 }
 
-class _CreateNewAssignmentScreenState extends State<CreateNewAssignmentScreen> {
+class _CreateNewAssignmentScreenState
+    extends State<CreateNewAssignmentScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _type;
   String _title = '';
@@ -28,11 +30,12 @@ class _CreateNewAssignmentScreenState extends State<CreateNewAssignmentScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != DateTime.now())
+    if (picked != null && picked != DateTime.now()) {
       setState(() {
         _dueDate = "${picked.toLocal()}".split(' ')[0];
         _dueDateController.text = _dueDate;
       });
+    }
   }
 
   @override
@@ -188,8 +191,15 @@ class _CreateNewAssignmentScreenState extends State<CreateNewAssignmentScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    // Save assignment
-                    Navigator.pop(context);
+                    // Create new item and pass it back
+                    Navigator.pop(context, {
+                      'type': _type!,
+                      'title': _title,
+                      'description': _description,
+                      'dueDate': _dueDate,
+                      'imageUrl': _imageUrl,
+                      'reminder': _reminder.toString(),
+                    });
                   }
                 },
                 child: Text('Create'),

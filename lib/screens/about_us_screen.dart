@@ -22,11 +22,13 @@ class AboutUsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              _buildLecturerCard('Lecturer 1', 'Lecturer No 1'),
+              _buildLecturerCard('Lecturer 1', 'Student ID: 123456', 'assets/damia.jpg'),
               SizedBox(height: 16),
-              _buildLecturerCard('Lecturer 2', 'Lecturer No 2'),
+              _buildLecturerCard('Lecturer 2', 'Student ID: 234567', 'assets/alesya.jpg'),
               SizedBox(height: 16),
-              _buildLecturerCard('Lecturer 3', 'Lecturer No 3'),
+              _buildLecturerCard('Lecturer 3', 'Student ID: 345678', 'assets/aleeya.jpg'),
+              SizedBox(height: 16),
+              _buildLecturerCard('Lecturer 4', 'Student ID: 456789', 'assets/mairah.jpg'),
             ],
           ),
         ),
@@ -34,7 +36,7 @@ class AboutUsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLecturerCard(String name, String subtitle) {
+  Widget _buildLecturerCard(String name, String studentId, String imageUrl) {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
@@ -44,8 +46,7 @@ class AboutUsScreen extends StatelessWidget {
         contentPadding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
         leading: CircleAvatar(
           radius: 30,
-          backgroundColor: Colors.blueAccent,
-          child: Icon(Icons.person, size: 40, color: Colors.white),
+          backgroundImage: AssetImage(imageUrl),
         ),
         title: Text(
           name,
@@ -55,7 +56,7 @@ class AboutUsScreen extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          subtitle,
+          studentId,
           style: TextStyle(
             fontSize: 16,
             color: Colors.black54,

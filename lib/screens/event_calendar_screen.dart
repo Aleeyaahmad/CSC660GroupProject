@@ -1,6 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Event Calendar',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: EventCalendarScreen(),
+    );
+  }
+}
+
+class Event {
+  final String eventName;
+  final DateTime date;
+  final String startTime;
+  final String endTime;
+
+  Event({
+    required this.eventName,
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+  });
+}
+
 class EventCalendarScreen extends StatefulWidget {
   @override
   _EventCalendarScreenState createState() => _EventCalendarScreenState();
@@ -10,6 +38,7 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  List<Event> _events = [];
 
   @override
   Widget build(BuildContext context) {
@@ -18,8 +47,8 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFF64B5F6).withOpacity(0.5), // Light Blue with opacity
-              Color(0xFF81C784).withOpacity(0.5), // Light Green with opacity
+              Color(0xFF64B5F6).withOpacity(0.5),
+              Color(0xFF81C784).withOpacity(0.5),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -41,7 +70,7 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: Colors.white, // Keep the title white
+                color: Colors.white,
                 shadows: [
                   Shadow(
                     offset: Offset(2, 2),
@@ -74,20 +103,22 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
                 }
               },
               onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
+                setState(() {
+                  _focusedDay = focusedDay;
+                });
               },
               calendarStyle: CalendarStyle(
                 todayDecoration: BoxDecoration(
-                  color: Color(0xFFFFD54F), // Light Orange
+                  color: Color(0xFFFFD54F),
                   shape: BoxShape.circle,
                 ),
                 selectedDecoration: BoxDecoration(
-                  color: Color(0xFF4FC3F7), // Light Blue Accent
+                  color: Color(0xFF4FC3F7),
                   shape: BoxShape.circle,
                 ),
                 markersMaxCount: 3,
                 markerDecoration: BoxDecoration(
-                  color: Color(0xFFEF5350), // Light Red
+                  color: Color(0xFFEF5350),
                   shape: BoxShape.circle,
                 ),
                 markersAlignment: Alignment.bottomCenter,
@@ -105,33 +136,35 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
               ),
             ),
             Expanded(
-              child: ListView(
-                children: [
-                  EventTile(
-                    icon: Icons.festival,
-                    title: 'MEGA CLUB FESTIVAL (MeCFest) 2.0',
-                    date: '10:00 - 23:00',
-                    color: Colors.pink[100]!,
-                  ),
-                  EventTile(
-                    icon: Icons.restaurant,
-                    title: 'Annual Dinner SISKOM',
-                    date: '20:00 - 23:00',
-                    color: Colors.green[100]!,
-                  ),
-                  // Add more EventTile widgets as needed
-                ],
+              child: ListView.builder(
+                itemCount: _events.length,
+                itemBuilder: (context, index) {
+                  return EventTile(
+                    icon: Icons.event,
+                    title: _events[index].eventName,
+                    date: '${_events[index].date.day}/${_events[index].date.month}/${_events[index].date.year}',
+                    startTime: _events[index].startTime,
+                    endTime: _events[index].endTime,
+                    color: Colors.blue[100]!,
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          Event? newEvent = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => AddEventScreen()),
+            MaterialPageRoute(builder: (context) => AddEventScreen(selectedDate: _selectedDay ?? DateTime.now())),
           );
+
+          if (newEvent != null) {
+            setState(() {
+              _events.add(newEvent);
+            });
+          }
         },
         backgroundColor: Color(0xFF81C784),
         child: Icon(Icons.add),
@@ -144,12 +177,16 @@ class EventTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String date;
+  final String startTime;
+  final String endTime;
   final Color color;
 
   const EventTile({
     required this.icon,
     required this.title,
     required this.date,
+    required this.startTime,
+    required this.endTime,
     required this.color,
   });
 
@@ -169,23 +206,66 @@ class EventTile extends StatelessWidget {
             ),
           ],
         ),
-        child: ListTile(
-          leading: Icon(icon, color: Colors.white),
-          title: Text(
-            title,
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(
-            date,
-            style: TextStyle(color: Colors.black54),
-          ),
+        child: Stack(
+          children: [
+            ListTile(
+              leading: Icon(icon, color: Colors.white),
+              title: Text(
+                title,
+                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                date,
+                style: TextStyle(color: Colors.black54),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    startTime,
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    endTime,
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class AddEventScreen extends StatelessWidget {
+class AddEventScreen extends StatefulWidget {
+  final DateTime selectedDate;
+
+  AddEventScreen({required this.selectedDate});
+
+  @override
+  _AddEventScreenState createState() => _AddEventScreenState();
+}
+
+class _AddEventScreenState extends State<AddEventScreen> {
+  TextEditingController eventNameController = TextEditingController();
+  TextEditingController startTimeController = TextEditingController();
+  TextEditingController endTimeController = TextEditingController();
+
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.selectedDate;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,17 +277,93 @@ class AddEventScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildTextField(label: 'Event Name', icon: Icons.event),
+            _buildTextField(
+              label: 'Event Name',
+              icon: Icons.event,
+              controller: eventNameController,
+            ),
             SizedBox(height: 10),
-            _buildTextField(label: 'Date', icon: Icons.calendar_today),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    label: 'Date',
+                    icon: Icons.calendar_today,
+                    controller: null,
+                    initialValue: '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                    enabled: false,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.calendar_today),
+                  onPressed: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (pickedDate != null && pickedDate != _selectedDate) {
+                      setState(() {
+                        _selectedDate = pickedDate;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
             SizedBox(height: 10),
-            _buildTextField(label: 'Start Time', icon: Icons.access_time),
+            _buildTextField(
+              label: 'Start Time',
+              icon: Icons.access_time,
+              controller: startTimeController,
+              onTap: () async {
+                TimeOfDay? pickedTime = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (pickedTime != null) {
+                  startTimeController.text = pickedTime.format(context);
+                }
+              },
+            ),
             SizedBox(height: 10),
-            _buildTextField(label: 'End Time', icon: Icons.access_time),
+            _buildTextField(
+              label: 'End Time',
+              icon: Icons.access_time,
+              controller: endTimeController,
+              onTap: () async {
+                TimeOfDay? pickedTime = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (pickedTime != null) {
+                  endTimeController.text = pickedTime.format(context);
+                }
+              },
+            ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context);
+                String eventName = eventNameController.text;
+                String startTime = startTimeController.text;
+                String endTime = endTimeController.text;
+
+                if (eventName.isNotEmpty && startTime.isNotEmpty && endTime.isNotEmpty) {
+                  Navigator.pop(context, Event(
+                    eventName: eventName,
+                    date: _selectedDate,
+                    startTime: startTime,
+                    endTime: endTime,
+                  ));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Please fill in all fields.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF81C784),
@@ -228,8 +384,16 @@ class AddEventScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField({required String label, required IconData icon}) {
+  Widget _buildTextField({
+    required String label,
+    required IconData icon,
+    TextEditingController? controller,
+    String? initialValue,
+    bool enabled = true,
+    Function()? onTap,
+  }) {
     return TextField(
+      controller: controller != null ? controller : TextEditingController(text: initialValue),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.black87),
@@ -242,6 +406,17 @@ class AddEventScreen extends StatelessWidget {
         ),
       ),
       style: TextStyle(color: Colors.black87),
+      enabled: enabled,
+      onTap: onTap,
+      readOnly: onTap != null,
     );
+  }
+
+  @override
+  void dispose() {
+    eventNameController.dispose();
+    startTimeController.dispose();
+    endTimeController.dispose();
+    super.dispose();
   }
 }
