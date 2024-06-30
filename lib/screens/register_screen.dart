@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -134,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _register() {
+  void _register() async {
     setState(() {
       _fullNameError = null;
       _emailError = null;
@@ -167,7 +168,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (_fullNameError == null && _emailError == null && _passwordError == null && _confirmPasswordError == null) {
-      _showSuccessDialog();
+      try {
+        print('Creating user with email: $_email');
+        UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _email,
+          password: _password,
+        );
+        print('User created successfully: ${userCredential.user}');
+        _showSuccessDialog();
+      } on FirebaseAuthException catch (e) {
+        print('FirebaseAuthException: ${e.message}');
+        if (e.code == 'email-already-in-use') {
+          setState(() {
+            _emailError = 'Email is already in use';
+          });
+        } else if (e.code == 'invalid-email') {
+          setState(() {
+            _emailError = 'Invalid email';
+          });
+        } else if (e.code == 'weak-password') {
+          setState(() {
+            _passwordError = 'Weak password';
+          });
+        }
+      } catch (e) {
+        // Handle other errors
+        print('Error: $e');
+      }
     }
   }
 

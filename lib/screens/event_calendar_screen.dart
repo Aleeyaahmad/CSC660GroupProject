@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class MyApp extends StatelessWidget {
   @override
@@ -27,6 +30,24 @@ class Event {
     required this.startTime,
     required this.endTime,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'eventName': eventName,
+      'date': date.toIso8601String(),
+      'startTime': startTime,
+      'endTime': endTime,
+    };
+  }
+
+  factory Event.fromMap(Map<String, dynamic> map) {
+    return Event(
+      eventName: map['eventName'],
+      date: DateTime.parse(map['date']),
+      startTime: map['startTime'],
+      endTime: map['endTime'],
+    );
+  }
 }
 
 class EventCalendarScreen extends StatefulWidget {
@@ -38,7 +59,74 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  List<Event> _events = [];
+  Map<DateTime, List<Event>> _events = {};
+  List<Event> _selectedEvents = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    QuerySnapshot snapshot = await _firestore.collection('events').get();
+    Map<DateTime, List<Event>> events = {};
+    for (var doc in snapshot.docs) {
+      Event event = Event.fromMap(doc.data() as Map<String, dynamic>);
+      DateTime eventDate = DateTime.utc(event.date.year, event.date.month, event.date.day);
+      if (events[eventDate] == null) {
+        events[eventDate] = [];
+      }
+      events[eventDate]!.add(event);
+    }
+    setState(() {
+      _events = events;
+    });
+  }
+
+  List<Event> _getEventsForDay(DateTime day) {
+    return _events[DateTime.utc(day.year, day.month, day.day)] ?? [];
+  }
+
+  Future<void> _addEvent(Event event) async {
+    await _firestore.collection('events').add(event.toMap());
+    setState(() {
+      DateTime eventDate = DateTime.utc(event.date.year, event.date.month, event.date.day);
+      if (_events[eventDate] == null) {
+        _events[eventDate] = [];
+      }
+      _events[eventDate]!.add(event);
+      if (_selectedDay == eventDate) {
+        _selectedEvents = _events[eventDate]!;
+      }
+    });
+  }
+
+  Future<void> _deleteEvent(Event event) async {
+    QuerySnapshot snapshot = await _firestore
+        .collection('events')
+        .where('eventName', isEqualTo: event.eventName)
+        .where('date', isEqualTo: event.date.toIso8601String())
+        .where('startTime', isEqualTo: event.startTime)
+        .where('endTime', isEqualTo: event.endTime)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      await _firestore.collection('events').doc(doc.id).delete();
+    }
+
+    setState(() {
+      DateTime eventDate = DateTime.utc(event.date.year, event.date.month, event.date.day);
+      _events[eventDate]?.remove(event);
+      if (_events[eventDate]?.isEmpty ?? true) {
+        _events.remove(eventDate);
+      }
+      if (_selectedDay == eventDate) {
+        _selectedEvents = _events[eventDate] ?? [];
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,10 +177,12 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
               selectedDayPredicate: (day) {
                 return isSameDay(_selectedDay, day);
               },
+              eventLoader: _getEventsForDay,
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
-                  _focusedDay = focusedDay; // update `_focusedDay` here as well
+                  _focusedDay = focusedDay;
+                  _selectedEvents = _getEventsForDay(selectedDay);
                 });
               },
               onFormatChanged: (format) {
@@ -135,17 +225,22 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
                 rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
               ),
             ),
+            SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
-                itemCount: _events.length,
+                itemCount: _selectedEvents.length,
                 itemBuilder: (context, index) {
                   return EventTile(
                     icon: Icons.event,
-                    title: _events[index].eventName,
-                    date: '${_events[index].date.day}/${_events[index].date.month}/${_events[index].date.year}',
-                    startTime: _events[index].startTime,
-                    endTime: _events[index].endTime,
+                    title: _selectedEvents[index].eventName,
+                    date:
+                        '${_selectedEvents[index].date.day}/${_selectedEvents[index].date.month}/${_selectedEvents[index].date.year}',
+                    startTime: _selectedEvents[index].startTime,
+                    endTime: _selectedEvents[index].endTime,
                     color: Colors.blue[100]!,
+                    onDelete: () {
+                      _deleteEvent(_selectedEvents[index]);
+                    },
                   );
                 },
               ),
@@ -157,13 +252,13 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
         onPressed: () async {
           Event? newEvent = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => AddEventScreen(selectedDate: _selectedDay ?? DateTime.now())),
+            MaterialPageRoute(
+                builder: (context) =>
+                    AddEventScreen(selectedDate: _selectedDay ?? DateTime.now())),
           );
 
           if (newEvent != null) {
-            setState(() {
-              _events.add(newEvent);
-            });
+            _addEvent(newEvent);
           }
         },
         backgroundColor: Color(0xFF81C784),
@@ -180,6 +275,7 @@ class EventTile extends StatelessWidget {
   final String startTime;
   final String endTime;
   final Color color;
+  final VoidCallback onDelete;
 
   const EventTile({
     required this.icon,
@@ -188,56 +284,36 @@ class EventTile extends StatelessWidget {
     required this.startTime,
     required this.endTime,
     required this.color,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(8.0),
       child: Container(
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(8.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 8,
-              offset: Offset(2, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Stack(
-          children: [
-            ListTile(
-              leading: Icon(icon, color: Colors.white),
-              title: Text(
-                title,
-                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                date,
-                style: TextStyle(color: Colors.black54),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    startTime,
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    endTime,
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        child: ListTile(
+          leading: Icon(icon, color: Colors.black87),
+          title: Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Date: $date', style: TextStyle(color: Colors.black87)),
+              Text('Start Time: $startTime', style: TextStyle(color: Colors.black87)),
+              Text('End Time: $endTime', style: TextStyle(color: Colors.black87)),
+            ],
+          ),
+          trailing: IconButton(
+            icon: Icon(Icons.delete, color: Colors.red),
+            onPressed: onDelete,
+          ),
         ),
       ),
     );
@@ -290,7 +366,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
                     label: 'Date',
                     icon: Icons.calendar_today,
                     controller: null,
-                    initialValue: '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                    initialValue:
+                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
                     enabled: false,
                   ),
                 ),
@@ -349,13 +426,18 @@ class _AddEventScreenState extends State<AddEventScreen> {
                 String startTime = startTimeController.text;
                 String endTime = endTimeController.text;
 
-                if (eventName.isNotEmpty && startTime.isNotEmpty && endTime.isNotEmpty) {
-                  Navigator.pop(context, Event(
-                    eventName: eventName,
-                    date: _selectedDate,
-                    startTime: startTime,
-                    endTime: endTime,
-                  ));
+                if (eventName.isNotEmpty &&
+                    startTime.isNotEmpty &&
+                    endTime.isNotEmpty) {
+                  Navigator.pop(
+                    context,
+                    Event(
+                      eventName: eventName,
+                      date: _selectedDate,
+                      startTime: startTime,
+                      endTime: endTime,
+                    ),
+                  );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -393,7 +475,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
     Function()? onTap,
   }) {
     return TextField(
-      controller: controller != null ? controller : TextEditingController(text: initialValue),
+      controller:
+          controller != null ? controller : TextEditingController(text: initialValue),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.black87),

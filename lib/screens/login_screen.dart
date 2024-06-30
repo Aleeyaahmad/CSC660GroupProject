@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  String _email = '';
+  String _password = '';
+  String? _emailError;
+  String? _passwordError;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,6 +45,8 @@ class LoginScreen extends StatelessWidget {
                 context,
                 label: 'Email',
                 icon: Icons.email,
+                onChanged: (value) => _email = value,
+                errorText: _emailError,
               ),
               SizedBox(height: 20),
               _buildTextField(
@@ -40,12 +54,12 @@ class LoginScreen extends StatelessWidget {
                 label: 'Password',
                 icon: Icons.lock,
                 obscureText: true,
+                onChanged: (value) => _password = value,
+                errorText: _passwordError,
               ),
               SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/dashboard');
-                },
+                onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF00C853), // Green color for the button
                   padding: EdgeInsets.symmetric(horizontal: 80, vertical: 15),
@@ -76,10 +90,11 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(BuildContext context, {required String label, required IconData icon, bool obscureText = false}) {
+  Widget _buildTextField(BuildContext context, {required String label, required IconData icon, required Function(String) onChanged, bool obscureText = false, String? errorText}) {
     return TextField(
       obscureText: obscureText,
       style: TextStyle(color: Colors.white),
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white),
@@ -94,7 +109,51 @@ class LoginScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide(color: Colors.white),
         ),
+        errorText: errorText,
+        errorStyle: TextStyle(color: Colors.red),
       ),
     );
+  }
+
+  void _login() async {
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+    });
+
+    if (_email.isEmpty || !_email.contains('@')) {
+      setState(() {
+        _emailError = 'Enter a valid email';
+      });
+    }
+
+    if (_password.isEmpty) {
+      setState(() {
+        _passwordError = 'Password cannot be empty';
+      });
+    }
+
+    if (_emailError == null && _passwordError == null) {
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _email,
+          password: _password,
+        );
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found') {
+          setState(() {
+            _emailError = 'No user found for that email';
+          });
+        } else if (e.code == 'wrong-password') {
+          setState(() {
+            _passwordError = 'Wrong password provided';
+          });
+        }
+      } catch (e) {
+        // Handle other errors
+        print(e);
+      }
+    }
   }
 }

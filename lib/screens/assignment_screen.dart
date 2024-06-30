@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_task_screen.dart';
 
 class AssignmentScreen extends StatefulWidget {
@@ -6,8 +7,7 @@ class AssignmentScreen extends StatefulWidget {
   _AssignmentScreenState createState() => _AssignmentScreenState();
 }
 
-class _AssignmentScreenState extends State<AssignmentScreen>
-    with SingleTickerProviderStateMixin {
+class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Map<String, dynamic>> assignments = [];
   List<Map<String, dynamic>> exams = [];
@@ -17,6 +17,7 @@ class _AssignmentScreenState extends State<AssignmentScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _fetchTasksFromFirestore();
   }
 
   @override
@@ -25,22 +26,46 @@ class _AssignmentScreenState extends State<AssignmentScreen>
     super.dispose();
   }
 
+  Future<void> _fetchTasksFromFirestore() async {
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+    // Fetch assignments
+    QuerySnapshot assignmentSnapshot = await firestore.collection('assignments').get();
+    List<Map<String, dynamic>> fetchedAssignments = assignmentSnapshot.docs.map((doc) {
+      var data = doc.data() as Map<String, dynamic>;
+      data['docId'] = doc.id;
+      return data;
+    }).toList();
+
+    // Fetch exams
+    QuerySnapshot examSnapshot = await firestore.collection('exams').get();
+    List<Map<String, dynamic>> fetchedExams = examSnapshot.docs.map((doc) {
+      var data = doc.data() as Map<String, dynamic>;
+      data['docId'] = doc.id;
+      return data;
+    }).toList();
+
+    // Fetch quizzes
+    QuerySnapshot quizSnapshot = await firestore.collection('quizzes').get();
+    List<Map<String, dynamic>> fetchedQuizzes = quizSnapshot.docs.map((doc) {
+      var data = doc.data() as Map<String, dynamic>;
+      data['docId'] = doc.id;
+      return data;
+    }).toList();
+
+    setState(() {
+      assignments = fetchedAssignments;
+      exams = fetchedExams;
+      quizzes = fetchedQuizzes;
+    });
+  }
+
   void _navigateToCreateAssignment() async {
     final newItem = await Navigator.pushNamed(context, '/create_assignment');
     if (newItem != null && newItem is Map<String, dynamic>) {
-      setState(() {
-        switch (newItem['type']) {
-          case 'Assignment':
-            assignments.add(newItem);
-            break;
-          case 'Exam':
-            exams.add(newItem);
-            break;
-          case 'Quiz':
-            quizzes.add(newItem);
-            break;
-        }
-      });
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      await firestore.collection(newItem['type'].toLowerCase() + 's').add(newItem);
+      _fetchTasksFromFirestore();
       _showSnackBarMessage('Successfully created!');
     }
   }
@@ -55,49 +80,22 @@ class _AssignmentScreenState extends State<AssignmentScreen>
           description: item['description'],
           dueDate: item['dueDate'],
           imageUrl: item['imageUrl'],
+          reminder: item['reminder'],
         ),
       ),
     );
 
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final String docId = item['docId'];
+
     if (result != null && result is Map<String, dynamic>) {
-      setState(() {
-        _removeOldItem(item);
-        _addNewItem(result);
-      });
+      await firestore.collection(result['type'].toLowerCase() + 's').doc(docId).set(result);
+      _fetchTasksFromFirestore();
       _showSnackBarMessage('Successfully updated!');
     } else if (result == 'delete') {
-      setState(() {
-        _removeOldItem(item);
-      });
+      await firestore.collection(item['type'].toLowerCase() + 's').doc(docId).delete();
+      _fetchTasksFromFirestore();
       _showSnackBarMessage('Successfully deleted!');
-    }
-  }
-
-  void _removeOldItem(Map<String, dynamic> oldItem) {
-    switch (oldItem['type']) {
-      case 'Assignment':
-        assignments.removeWhere((item) => item['title'] == oldItem['title']);
-        break;
-      case 'Exam':
-        exams.removeWhere((item) => item['title'] == oldItem['title']);
-        break;
-      case 'Quiz':
-        quizzes.removeWhere((item) => item['title'] == oldItem['title']);
-        break;
-    }
-  }
-
-  void _addNewItem(Map<String, dynamic> newItem) {
-    switch (newItem['type']) {
-      case 'Assignment':
-        assignments.add(newItem);
-        break;
-      case 'Exam':
-        exams.add(newItem);
-        break;
-      case 'Quiz':
-        quizzes.add(newItem);
-        break;
     }
   }
 
@@ -161,16 +159,30 @@ class _AssignmentScreenState extends State<AssignmentScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(item['title'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            Text(item['title'],
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87)),
             SizedBox(height: 5),
-            Text(item['description'], style: TextStyle(fontSize: 14, color: Colors.black54)),
+            Text(item['description'],
+                style: TextStyle(fontSize: 14, color: Colors.black54)),
             SizedBox(height: 5),
-            Text(item['dueDate'], style: TextStyle(fontSize: 12, color: Colors.black45)),
+            Text(item['dueDate'],
+                style: TextStyle(fontSize: 12, color: Colors.black45)),
             SizedBox(height: 5),
             if (item['imageUrl'] != null && item['imageUrl'].isNotEmpty)
-              Image.network(item['imageUrl']),
+              Container(
+                height: 100.0, // set your desired height
+                width: 100.0,  // set your desired width
+                child: Image.network(
+                  item['imageUrl'],
+                  fit: BoxFit.cover,
+                ),
+              ),
             if (item['reminder'] == true)
-              Text('Reminder set', style: TextStyle(fontSize: 12, color: Colors.red)),
+              Text('Reminder set',
+                  style: TextStyle(fontSize: 12, color: Colors.red)),
           ],
         ),
       ),

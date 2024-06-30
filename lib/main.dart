@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme_provider.dart';
@@ -18,8 +19,20 @@ import 'screens/create_new_assignment_screen.dart';
 import 'screens/edit_task_screen.dart';
 import 'screens/search_room_reservation_screen.dart';
 import 'screens/view_room_reservation_screen.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: FirebaseOptions(
+      apiKey: "AIzaSyCKcSEx0IEdSy5_fZ1-uP0pjg6RVbn3WwI",
+      appId: "1:1014350006020:android:61dcbd4bb515c615a3f251",
+      messagingSenderId: "1014350006020",
+      projectId: "authentication660",
+      storageBucket: "authentication660.appspot.com",
+    )
+  );
+  
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -60,7 +73,8 @@ class EduHubApp extends StatelessWidget {
               title: 'Assignment #1',
               description: 'Group Project CSC660',
               dueDate: '30/5/2024',
-              imageUrl: '',
+              imageUrl: '', 
+              reminder: false,
             ),
             '/search_room_reservation': (context) => SearchRoomReservationScreen(
               building: 'Building B',

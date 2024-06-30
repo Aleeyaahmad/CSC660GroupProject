@@ -1,0 +1,27 @@
+com.example.edu_hub.app-RES-0 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\RES\processDebugGoogleServices
+com.example.edu_hub.app-pngs-1 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\generated\res\pngs\debug
+com.example.edu_hub.app-resValues-2 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\generated\res\resValues\debug
+com.example.edu_hub.app-rs-3 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\generated\res\rs\debug
+com.example.edu_hub.app-mergeDebugResources-4 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.example.edu_hub.app-mergeDebugResources-5 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.example.edu_hub.app-merged_res-6 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\build\intermediates\merged_res\debug
+com.example.edu_hub.app-debug-7 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\src\debug\res
+com.example.edu_hub.app-main-8 C:\Users\New folder\Downloads\Flutter\CSC660Project\eduhub\edu_hub\android\app\src\main\res
+com.example.edu_hub.app-jetified-window-1.0.0-beta04-9 C:\Users\aleey\.gradle\caches\transforms-3\0e1fe3c9069ea1bc5ecfc6b349cbd38f\transformed\jetified-window-1.0.0-beta04\res
+com.example.edu_hub.app-jetified-window-java-1.0.0-beta04-10 C:\Users\aleey\.gradle\caches\transforms-3\3fe57bd5d3c2ce0f0ac71f2b847a1090\transformed\jetified-window-java-1.0.0-beta04\res
+com.example.edu_hub.app-browser-1.4.0-11 C:\Users\aleey\.gradle\caches\transforms-3\4dd49341018e0c5ff736003e3f876791\transformed\browser-1.4.0\res
+com.example.edu_hub.app-jetified-annotation-experimental-1.3.0-12 C:\Users\aleey\.gradle\caches\transforms-3\540d524c3b4208b765f7e6662ac1cced\transformed\jetified-annotation-experimental-1.3.0\res
+com.example.edu_hub.app-jetified-play-services-auth-20.7.0-13 C:\Users\aleey\.gradle\caches\transforms-3\592bdfbd0c0c4a7f8c42e1d531cf814f\transformed\jetified-play-services-auth-20.7.0\res
+com.example.edu_hub.app-jetified-play-services-measurement-api-22.0.2-14 C:\Users\aleey\.gradle\caches\transforms-3\5e73cc6c0ae31dac9158f1dc3c4bd23e\transformed\jetified-play-services-measurement-api-22.0.2\res
+com.example.edu_hub.app-jetified-core-ktx-1.9.0-15 C:\Users\aleey\.gradle\caches\transforms-3\6591118611a69fcb483b7bb6bfdd6f1a\transformed\jetified-core-ktx-1.9.0\res
+com.example.edu_hub.app-lifecycle-runtime-2.3.1-16 C:\Users\aleey\.gradle\caches\transforms-3\683ad8dd5016faaf7e84d2de2141b568\transformed\lifecycle-runtime-2.3.1\res
+com.example.edu_hub.app-jetified-credentials-play-services-auth-1.2.0-rc01-17 C:\Users\aleey\.gradle\caches\transforms-3\a1231902a782c8767afae6253c339342\transformed\jetified-credentials-play-services-auth-1.2.0-rc01\res
+com.example.edu_hub.app-jetified-ads-adservices-1.0.0-beta05-18 C:\Users\aleey\.gradle\caches\transforms-3\a35066f8ceaceaf5135146249d2d7c4f\transformed\jetified-ads-adservices-1.0.0-beta05\res
+com.example.edu_hub.app-jetified-firebase-common-21.0.0-19 C:\Users\aleey\.gradle\caches\transforms-3\c2deed19638ec223dbc285f3422b71be\transformed\jetified-firebase-common-21.0.0\res
+com.example.edu_hub.app-jetified-credentials-1.2.0-rc01-20 C:\Users\aleey\.gradle\caches\transforms-3\c7f33e8354a4ac9b4b6f1230f0a44ea4\transformed\jetified-credentials-1.2.0-rc01\res
+com.example.edu_hub.app-jetified-play-services-basement-18.4.0-21 C:\Users\aleey\.gradle\caches\transforms-3\d407656cd0d3af23f587f34756bc8dc2\transformed\jetified-play-services-basement-18.4.0\res
+com.example.edu_hub.app-core-1.9.0-22 C:\Users\aleey\.gradle\caches\transforms-3\dfaf5c9906195ceeb31f7d7bbd0d8002\transformed\core-1.9.0\res
+com.example.edu_hub.app-jetified-play-services-base-18.0.1-23 C:\Users\aleey\.gradle\caches\transforms-3\e9c18f285734746e1eeb8d4cdf52f3de\transformed\jetified-play-services-base-18.0.1\res
+com.example.edu_hub.app-jetified-ads-adservices-java-1.0.0-beta05-24 C:\Users\aleey\.gradle\caches\transforms-3\f977da36ed0ee994d6a2e4994614237d\transformed\jetified-ads-adservices-java-1.0.0-beta05\res
+com.example.edu_hub.app-packaged_res-25 C:\Users\aleey\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_auth-5.1.1\android\build\intermediates\packaged_res\debug
+com.example.edu_hub.app-packaged_res-26 C:\Users\aleey\AppData\Local\Pub\Cache\hosted\pub.dev\firebase_core-3.1.1\android\build\intermediates\packaged_res\debug

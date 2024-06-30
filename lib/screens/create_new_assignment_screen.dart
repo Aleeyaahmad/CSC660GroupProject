@@ -1,48 +1,77 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
 
 class CreateNewAssignmentScreen extends StatefulWidget {
   @override
-  _CreateNewAssignmentScreenState createState() =>
-      _CreateNewAssignmentScreenState();
+  _CreateNewAssignmentScreenState createState() => _CreateNewAssignmentScreenState();
 }
 
-class _CreateNewAssignmentScreenState
-    extends State<CreateNewAssignmentScreen> {
+class _CreateNewAssignmentScreenState extends State<CreateNewAssignmentScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _type;
   String _title = '';
   String _description = '';
-  String _dueDate = '';
-  String _imageUrl = '';
+  DateTime _dueDate = DateTime.now();
+  String? _imageUrl;
   bool _reminder = false;
-  TextEditingController _dueDateController = TextEditingController();
+  File? _imageFile;
+  final TextEditingController _dueDateController = TextEditingController();
 
   @override
-  void dispose() {
-    _dueDateController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _dueDateController.text = _dueDate.toIso8601String();
   }
 
   Future<void> _selectDueDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _dueDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != DateTime.now()) {
+    if (picked != null && picked != _dueDate) {
       setState(() {
-        _dueDate = "${picked.toLocal()}".split(' ')[0];
-        _dueDateController.text = _dueDate;
+        _dueDate = picked;
+        _dueDateController.text = _dueDate.toIso8601String();
       });
     }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<String?> _uploadImage(File image) async {
+    try {
+      final storageRef = FirebaseStorage.instance.ref().child('images/${DateTime.now().toIso8601String()}');
+      final uploadTask = storageRef.putFile(image);
+      final taskSnapshot = await uploadTask.whenComplete(() {});
+      final downloadUrl = await taskSnapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Upload error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveToFirestore(Map<String, dynamic> newItem) async {
+    await FirebaseFirestore.instance.collection('assignments').add(newItem);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create New'),
+        title: Text('Create New Assignment'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -73,7 +102,7 @@ class _CreateNewAssignmentScreenState
                   });
                 },
                 validator: (value) {
-                  if (value == null) {
+                  if (value == null || value.isEmpty) {
                     return 'Please select a type';
                   }
                   return null;
@@ -151,28 +180,25 @@ class _CreateNewAssignmentScreenState
                 },
               ),
               SizedBox(height: 10),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Image',
-                  filled: true,
-                  fillColor: Colors.grey[300],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              Text('Image', style: TextStyle(fontSize: 16)),
+              SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    icon: Icon(Icons.camera),
+                    label: Text('Camera'),
                   ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _imageUrl = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an image URL';
-                  }
-                  return null;
-                },
+                  ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: Icon(Icons.photo_library),
+                    label: Text('Gallery'),
+                  ),
+                ],
               ),
+              if (_imageFile != null)
+                Image.file(_imageFile!, height: 200),
               SizedBox(height: 10),
               Row(
                 children: [
@@ -189,17 +215,21 @@ class _CreateNewAssignmentScreenState
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    // Create new item and pass it back
-                    Navigator.pop(context, {
-                      'type': _type!,
+                    if (_imageFile != null) {
+                      _imageUrl = await _uploadImage(_imageFile!) ?? '';
+                    }
+                    final newItem = {
+                      'type': _type ?? 'Assignment',
                       'title': _title,
                       'description': _description,
-                      'dueDate': _dueDate,
-                      'imageUrl': _imageUrl,
-                      'reminder': _reminder.toString(),
-                    });
+                      'dueDate': _dueDate.toIso8601String(),
+                      'imageUrl': _imageUrl ?? '',
+                      'reminder': _reminder,
+                    };
+                    await _saveToFirestore(newItem);
+                    Navigator.pop(context, newItem);
                   }
                 },
                 child: Text('Create'),

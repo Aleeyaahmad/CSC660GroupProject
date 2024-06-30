@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1014350006020",
+    "project_id": "authentication660",
+    "storage_bucket": "authentication660.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1014350006020:android:61dcbd4bb515c615a3f251",
+        "android_client_info": {
+          "package_name": "com.example.edu_hub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKcSEx0IEdSy5_fZ1-uP0pjg6RVbn3WwI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

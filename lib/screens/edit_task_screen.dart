@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Add this import for date formatting
+import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class EditTaskScreen extends StatefulWidget {
-  final String type;
-  final String title;
-  final String description;
-  final String dueDate;
-  final String imageUrl;
+  final String? type;
+  final String? title;
+  final String? description;
+  final String? dueDate;
+  final String? imageUrl;
+  final bool reminder;
 
   EditTaskScreen({
-    required this.type,
-    required this.title,
-    required this.description,
-    required this.dueDate,
-    required this.imageUrl,
+    this.type,
+    this.title,
+    this.description,
+    this.dueDate,
+    this.imageUrl,
+    required this.reminder,
   });
 
   @override
@@ -28,17 +33,18 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   late DateTime _dueDate;
   late String _imageUrl;
   bool _reminder = false;
-
+  File? _imageFile;
   final List<String> _types = ['Assignment', 'Exam', 'Quiz'];
 
   @override
   void initState() {
     super.initState();
-    _type = _types.contains(widget.type) ? widget.type : _types.first;
-    _title = widget.title;
-    _description = widget.description;
-    _dueDate = DateTime.tryParse(widget.dueDate) ?? DateTime.now();
-    _imageUrl = widget.imageUrl;
+    _type = widget.type ?? _types.first;
+    _title = widget.title ?? '';
+    _description = widget.description ?? '';
+    _dueDate = widget.dueDate != null ? DateTime.parse(widget.dueDate!) : DateTime.now();
+    _imageUrl = widget.imageUrl ?? '';
+    _reminder = widget.reminder;
   }
 
   Future<void> _selectDueDate(BuildContext context) async {
@@ -55,13 +61,33 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<String?> _uploadImage(File image) async {
+    try {
+      final storageRef = FirebaseStorage.instance.ref().child('images/${DateTime.now().toIso8601String()}');
+      final uploadTask = storageRef.putFile(image);
+      final taskSnapshot = await uploadTask.whenComplete(() {});
+      final downloadUrl = await taskSnapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Upload error: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Task', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.grey[200], // Set AppBar to light grey
-        iconTheme: IconThemeData(color: Colors.black),
+        title: Text('Edit Task'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -92,7 +118,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                   });
                 },
                 validator: (value) {
-                  if (value == null) {
+                  if (value == null || value.isEmpty) {
                     return 'Please select a type';
                   }
                   return null;
@@ -150,7 +176,6 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               SizedBox(height: 10),
               TextFormField(
                 readOnly: true,
-                onTap: () => _selectDueDate(context),
                 decoration: InputDecoration(
                   labelText: 'Due Date',
                   filled: true,
@@ -159,40 +184,41 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  suffixIcon: Icon(Icons.calendar_today, color: Colors.black),
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
+                onTap: () {
+                  _selectDueDate(context);
+                },
                 controller: TextEditingController(
-                  text: DateFormat('yyyy-MM-dd').format(_dueDate),
+                  text: DateFormat.yMd().format(_dueDate),
                 ),
               ),
               SizedBox(height: 10),
-              TextFormField(
-                initialValue: _imageUrl,
-                decoration: InputDecoration(
-                  labelText: 'Image URL',
-                  filled: true,
-                  fillColor: Colors.grey[300],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              Text('Image', style: TextStyle(fontSize: 16)),
+              SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    icon: Icon(Icons.camera),
+                    label: Text('Camera'),
                   ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _imageUrl = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an image URL';
-                  }
-                  return null;
-                },
+                  ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: Icon(Icons.photo_library),
+                    label: Text('Gallery'),
+                  ),
+                ],
               ),
+              if (_imageFile != null)
+                Image.file(_imageFile!, height: 200)
+              else if (_imageUrl.isNotEmpty)
+                Image.network(_imageUrl, height: 200),
               SizedBox(height: 10),
               Row(
                 children: [
-                  Text('Reminder?', style: TextStyle(color: Colors.black)),
+                  Text('Reminder?'),
                   Switch(
                     value: _reminder,
                     onChanged: (value) {
@@ -205,63 +231,30 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    Navigator.pop(context, {
+                    if (_imageFile != null) {
+                      _imageUrl = await _uploadImage(_imageFile!) ?? '';
+                    }
+                    final updatedItem = {
                       'type': _type,
                       'title': _title,
                       'description': _description,
-                      'dueDate': DateFormat('yyyy-MM-dd').format(_dueDate),
+                      'dueDate': _dueDate.toIso8601String(),
                       'imageUrl': _imageUrl,
-                      'reminder': _reminder.toString(),
-                    });
+                      'reminder': _reminder,
+                    };
+                    Navigator.pop(context, {'action': 'update', 'updatedItem': updatedItem, 'tabIndex': _types.indexOf(_type)});
                   }
                 },
-                child: Text('Update', style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, // Blue for button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  textStyle: TextStyle(fontSize: 18),
-                ),
+                child: Text('Save'),
               ),
-              SizedBox(height: 10),
               ElevatedButton(
                 onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text('Confirm Deletion'),
-                      content: Text('Are you sure you want to delete this task?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context); // Close dialog
-                          },
-                          child: Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context); // Close dialog
-                            Navigator.pop(context, 'delete'); // Return 'delete' result
-                          },
-                          child: Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
+                  Navigator.pop(context, {'action': 'delete', 'tabIndex': _types.indexOf(_type)});
                 },
-                child: Text('Delete', style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, // Red for delete button
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  textStyle: TextStyle(fontSize: 18),
-                ),
+                child: Text('Delete'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'search_room_reservation_screen.dart';
 
 class RoomReservationScreen extends StatefulWidget {
@@ -11,7 +12,58 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
   String? _selectedRoomNumber;
   String? _selectedDate;
   String? _selectedLecturer;
-  List<Map<String, String>> _reservations = [];
+  List<Map<String, String>> _reservations = []; // Store reservations locally
+
+  final CollectionReference _reservationsCollection =
+      FirebaseFirestore.instance.collection('reservations');
+
+  @override
+  void initState() {
+    super.initState();
+    // Load existing reservations when the screen initializes
+    _loadReservations();
+  }
+
+  // Method to load reservations from Firestore
+  void _loadReservations() async {
+  try {
+    final querySnapshot = await _reservationsCollection.get();
+    setState(() {
+      _reservations = querySnapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return {
+          'building': data['building'] as String,
+          'room': data['room'] as String,
+          'date': data['date'] as String,
+          'lecturer': data['lecturer'] as String,
+        };
+      }).toList();
+    });
+  } catch (e) {
+    print('Error fetching reservations: $e');
+    setState(() {
+      _reservations = []; // Ensure _reservations is initialized
+    });
+  }
+}
+
+  // Define room options based on selected building
+  List<String> getRoomOptions(String building) {
+    switch (building) {
+      case 'Building A':
+        return ['A3-1', 'A3-2', 'A3-3', 'A3-4', 'Library'];
+      case 'Building B':
+        return ['MK-B1', 'MK-B2', 'MK-B3', 'MK-B4', 'B3-1', 'B3-2', 'B3-3', 'B3-4'];
+      case 'Building C':
+        return ['MK-C1', 'MK-C2', 'MK-C3', 'MK-C4', 'C3-1', 'C3-2', 'C3-3', 'C3-4', 'Dewan Akademik'];
+      case 'Building D':
+        return ['MK-D1', 'MK-D2', 'MK-D3', 'MK-D4', 'D3-1', 'D3-2', 'D3-3', 'D3-4'];
+      case 'Building E':
+        return ['MK-E1', 'MK-E2', 'MK-E3', 'MK-E4'];
+      default:
+        return [];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +118,7 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                           ),
                         ),
                         value: _selectedBuilding,
-                        items: ['Building A', 'Building B', 'Building C'].map((String building) {
+                        items: ['Building A', 'Building B', 'Building C', 'Building D', 'Building E'].map((String building) {
                           return DropdownMenuItem<String>(
                             value: building,
                             child: Text(building, style: TextStyle(color: Colors.black87)),
@@ -75,34 +127,37 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                         onChanged: (newValue) {
                           setState(() {
                             _selectedBuilding = newValue;
+                            // Reset room selection when building changes
+                            _selectedRoomNumber = null;
                           });
                         },
                       ),
                       SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: 'Select Room Number',
-                          labelStyle: TextStyle(color: Colors.black87),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                      if (_selectedBuilding != null)
+                        DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Select Room Number',
+                            labelStyle: TextStyle(color: Colors.black87),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
+                          value: _selectedRoomNumber,
+                          items: getRoomOptions(_selectedBuilding!).map((String room) {
+                            return DropdownMenuItem<String>(
+                              value: room,
+                              child: Text(room, style: TextStyle(color: Colors.black87)),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _selectedRoomNumber = newValue;
+                            });
+                          },
                         ),
-                        value: _selectedRoomNumber,
-                        items: ['Room 101', 'Room 102', 'Room 103'].map((String room) {
-                          return DropdownMenuItem<String>(
-                            value: room,
-                            child: Text(room, style: TextStyle(color: Colors.black87)),
-                          );
-                        }).toList(),
-                        onChanged: (newValue) {
-                          setState(() {
-                            _selectedRoomNumber = newValue;
-                          });
-                        },
-                      ),
                       SizedBox(height: 10),
                       DropdownButtonFormField<String>(
                         decoration: InputDecoration(
@@ -116,7 +171,14 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                           ),
                         ),
                         value: _selectedLecturer,
-                        items: ['Lecturer A', 'Lecturer B', 'Lecturer C'].map((String lecturer) {
+                        items: [
+                          'EN. ZAWAWI BIN ISMAIL @ ABDUL WAHAB',
+                          'EN. MUHAMMAD ATIF BIN RAMLAN',
+                          'TS. DR. HASIAH BINTI MOHAMED @ OMAR',
+                          'PN. NOR JAWANEES BINTI AHMAD HANAFIAH',
+                          'EN. AHMAD FAKRULAZIZI BIN ABU BAKAR',
+                          'EN. AHMAD ISMAIL BIN MOHD ANUAR'
+                        ].map((String lecturer) {
                           return DropdownMenuItem<String>(
                             value: lecturer,
                             child: Text(lecturer, style: TextStyle(color: Colors.black87)),
@@ -168,12 +230,15 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      if (_selectedBuilding != null && _selectedRoomNumber != null && _selectedDate != null && _selectedLecturer != null) {
+                      if (_selectedBuilding != null &&
+                          _selectedRoomNumber != null &&
+                          _selectedDate != null &&
+                          _selectedLecturer != null) {
                         // Check for duplicate reservations
                         bool isDuplicate = _reservations.any((reservation) =>
-                          reservation['building'] == _selectedBuilding &&
-                          reservation['room'] == _selectedRoomNumber &&
-                          reservation['date'] == _selectedDate);
+                            reservation['building'] == _selectedBuilding &&
+                            reservation['room'] == _selectedRoomNumber &&
+                            reservation['date'] == _selectedDate);
 
                         if (isDuplicate) {
                           showDialog(
@@ -194,17 +259,29 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                             },
                           );
                         } else {
-                          setState(() {
-                            _reservations.add({
-                              'building': _selectedBuilding!,
-                              'room': _selectedRoomNumber!,
-                              'date': _selectedDate!,
-                              'lecturer': _selectedLecturer!,
+                          _reservationsCollection.add({
+                            'building': _selectedBuilding!,
+                            'room': _selectedRoomNumber!,
+                            'date': _selectedDate!,
+                            'lecturer': _selectedLecturer!,
+                          }).then((value) {
+                            setState(() {
+                              _reservations.add({
+                                'building': _selectedBuilding!,
+                                'room': _selectedRoomNumber!,
+                                'date': _selectedDate!,
+                                'lecturer': _selectedLecturer!,
+                              });
                             });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Reservation saved successfully')),
+                            );
+                          }).catchError((error) {
+                            print('Failed to add reservation: $error');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to save reservation')),
+                            );
                           });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Reservation saved successfully')),
-                          );
                         }
                       } else {
                         // Show a message if not all fields are selected
@@ -231,7 +308,9 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      if (_selectedBuilding != null && _selectedRoomNumber != null && _selectedDate != null) {
+                      if (_selectedBuilding != null &&
+                          _selectedRoomNumber != null &&
+                          _selectedDate != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -268,33 +347,33 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
               ),
               SizedBox(height: 20),
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _reservations.map((reservation) {
-                      return Container(
-                        width: MediaQuery.of(context).size.width,
-                        child: Card(
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("Building: ${reservation['building']}", style: TextStyle(color: Colors.black87)),
-                                Text("Room: ${reservation['room']}", style: TextStyle(color: Colors.black87)),
-                                Text("Date: ${reservation['date']}", style: TextStyle(color: Colors.black87)),
-                                Text("Lecturer: ${reservation['lecturer']}", style: TextStyle(color: Colors.black87)),
-                              ],
-                            ),
+                child: ListView.builder(
+                  itemCount: _reservations.length,
+                  itemBuilder: (context, index) {
+                    final reservation = _reservations[index];
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 20),
+                      width: double.infinity,
+                      child: Card(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Building: ${reservation['building']}", style: TextStyle(color: Colors.black87)),
+                              Text("Room: ${reservation['room']}", style: TextStyle(color: Colors.black87)),
+                              Text("Date: ${reservation['date']}", style: TextStyle(color: Colors.black87)),
+                              Text("Lecturer: ${reservation['lecturer']}", style: TextStyle(color: Colors.black87)),
+                            ],
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
