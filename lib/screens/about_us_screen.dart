@@ -22,13 +22,13 @@ class AboutUsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              _buildLecturerCard('Lecturer 1', 'Student ID: 123456', 'assets/damia.jpg'),
+              _buildLecturerCard('DAMIA SYAFIQAH BINTI MOHD SALLEH', 'Student ID: 2022645986', 'assets/damia.jpg'),
               SizedBox(height: 16),
-              _buildLecturerCard('Lecturer 2', 'Student ID: 234567', 'assets/alesya.jpg'),
+              _buildLecturerCard('NUR ALIA ALESYA BINTI ABDUL AZIZ', 'Student ID: 2022484762', 'assets/alesya.jpg'),
               SizedBox(height: 16),
-              _buildLecturerCard('Lecturer 3', 'Student ID: 345678', 'assets/aleeya.jpg'),
+              _buildLecturerCard('ALEEYA BINTI AHMAD MAHMUD', 'Student ID: 2022836268', 'assets/aleeya.jpg'),
               SizedBox(height: 16),
-              _buildLecturerCard('Lecturer 4', 'Student ID: 456789', 'assets/mairah.jpg'),
+              _buildLecturerCard('NURUL UMAIRAH BINTI MOHD BADLI', 'Student ID: 2022616642', 'assets/mairah.jpg'),
             ],
           ),
         ),
@@ -39,13 +39,13 @@ class AboutUsScreen extends StatelessWidget {
   Widget _buildLecturerCard(String name, String studentId, String imageUrl) {
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(30),
       ),
       elevation: 5,
       child: ListTile(
         contentPadding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
         leading: CircleAvatar(
-          radius: 30,
+          radius: 20,
           backgroundImage: AssetImage(imageUrl),
         ),
         title: Text(

@@ -99,7 +99,7 @@ class OnboardingScreen extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15), // Padding inside button
                 ),
                 child: Text(
-                  "Let's get started",
+                  "Let's Get Started",
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.blue, // Blue color for text

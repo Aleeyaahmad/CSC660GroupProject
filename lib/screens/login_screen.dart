@@ -14,6 +14,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _passwordError;
 
   @override
+  void initState() {
+    super.initState();
+    // Check if user is already logged in
+    if (FirebaseAuth.instance.currentUser != null) {
+      WidgetsBinding.instance?.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
@@ -45,7 +56,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 context,
                 label: 'Email',
                 icon: Icons.email,
-                onChanged: (value) => _email = value,
+                onChanged: (value) {
+                  setState(() {
+                    _email = value;
+                    _emailError = null; // Clear previous error
+                  });
+                },
                 errorText: _emailError,
               ),
               SizedBox(height: 20),
@@ -54,7 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 label: 'Password',
                 icon: Icons.lock,
                 obscureText: true,
-                onChanged: (value) => _password = value,
+                onChanged: (value) {
+                  setState(() {
+                    _password = value;
+                    _passwordError = null; // Clear previous error
+                  });
+                },
                 errorText: _passwordError,
               ),
               SizedBox(height: 40),
@@ -125,35 +146,34 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _emailError = 'Enter a valid email';
       });
+      return; // Exit early if email is invalid
     }
 
     if (_password.isEmpty) {
       setState(() {
         _passwordError = 'Password cannot be empty';
       });
+      return; // Exit early if password is empty
     }
 
-    if (_emailError == null && _passwordError == null) {
-      try {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _email,
-          password: _password,
-        );
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          setState(() {
-            _emailError = 'No user found for that email';
-          });
-        } else if (e.code == 'wrong-password') {
-          setState(() {
-            _passwordError = 'Wrong password provided';
-          });
-        }
-      } catch (e) {
-        // Handle other errors
-        print(e);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _email,
+        password: _password,
+      );
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        setState(() {
+          _emailError = 'No user found for that email';
+        });
+      } else if (e.code == 'wrong-password') {
+        setState(() {
+          _passwordError = 'Wrong password provided';
+        });
       }
+    } catch (e) {
+      print(e); // Print other errors to console
     }
   }
 }

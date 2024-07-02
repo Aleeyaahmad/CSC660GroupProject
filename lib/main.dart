@@ -19,7 +19,7 @@ import 'screens/create_new_assignment_screen.dart';
 import 'screens/edit_task_screen.dart';
 import 'screens/search_room_reservation_screen.dart';
 import 'screens/view_room_reservation_screen.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,20 +65,21 @@ class EduHubApp extends StatelessWidget {
             '/room_reservation': (context) => RoomReservationScreen(),
             '/event_calendar': (context) => EventCalendarScreen(),
             '/about_us': (context) => AboutUsScreen(),
-            '/edit_profile': (context) => EditProfileScreen(),
+            '/edit_profile': (context) => EditProfileScreen(name: '', phoneNumber: '', email: '', areaOfExpertise: '', socialMedia: '',),
             '/add_room_reservation': (context) => AddRoomReservationScreen(),
             '/create_assignment': (context) => CreateNewAssignmentScreen(),
-            '/edit_task': (context) => EditTaskScreen(
+              '/edit_task': (context) => EditTaskScreen(
+              docId: 'dummyId',  // Use a dummy value or pass the actual ID if available
               type: 'Assignment',
               title: 'Assignment #1',
               description: 'Group Project CSC660',
-              dueDate: '30/5/2024',
-              imageUrl: '', 
+              dueDate: '2024-05-30T00:00:00.000', // Use ISO 8601 format for the date
+              imageUrl: '',
               reminder: false,
             ),
             '/search_room_reservation': (context) => SearchRoomReservationScreen(
               building: 'Building B',
-              room: 'Room 101',
+              room: 'Room 101', date: '', selectedBuilding: '', selectedRoomNumber: '', selectedDate: '',
             ),
           },
         );

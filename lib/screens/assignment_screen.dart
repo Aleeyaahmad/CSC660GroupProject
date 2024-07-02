@@ -7,8 +7,7 @@ class AssignmentScreen extends StatefulWidget {
   _AssignmentScreenState createState() => _AssignmentScreenState();
 }
 
-class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _AssignmentScreenState extends State<AssignmentScreen> {
   List<Map<String, dynamic>> assignments = [];
   List<Map<String, dynamic>> exams = [];
   List<Map<String, dynamic>> quizzes = [];
@@ -16,47 +15,32 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _fetchTasksFromFirestore();
+    _fetchAllTasks();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  void _fetchAllTasks() {
+    _fetchTasksForType('Assignment');
+    _fetchTasksForType('Exam');
+    _fetchTasksForType('Quiz');
   }
 
-  Future<void> _fetchTasksFromFirestore() async {
+  void _fetchTasksForType(String type) async {
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-    // Fetch assignments
-    QuerySnapshot assignmentSnapshot = await firestore.collection('assignments').get();
-    List<Map<String, dynamic>> fetchedAssignments = assignmentSnapshot.docs.map((doc) {
-      var data = doc.data() as Map<String, dynamic>;
-      data['docId'] = doc.id;
-      return data;
-    }).toList();
-
-    // Fetch exams
-    QuerySnapshot examSnapshot = await firestore.collection('exams').get();
-    List<Map<String, dynamic>> fetchedExams = examSnapshot.docs.map((doc) {
-      var data = doc.data() as Map<String, dynamic>;
-      data['docId'] = doc.id;
-      return data;
-    }).toList();
-
-    // Fetch quizzes
-    QuerySnapshot quizSnapshot = await firestore.collection('quizzes').get();
-    List<Map<String, dynamic>> fetchedQuizzes = quizSnapshot.docs.map((doc) {
+    QuerySnapshot snapshot = await firestore.collection(type.toLowerCase() + 's').get();
+    List<Map<String, dynamic>> fetchedItems = snapshot.docs.map((doc) {
       var data = doc.data() as Map<String, dynamic>;
       data['docId'] = doc.id;
       return data;
     }).toList();
 
     setState(() {
-      assignments = fetchedAssignments;
-      exams = fetchedExams;
-      quizzes = fetchedQuizzes;
+      if (type == 'Assignment') {
+        assignments = fetchedItems;
+      } else if (type == 'Exam') {
+        exams = fetchedItems;
+      } else if (type == 'Quiz') {
+        quizzes = fetchedItems;
+      }
     });
   }
 
@@ -65,7 +49,7 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
     if (newItem != null && newItem is Map<String, dynamic>) {
       final FirebaseFirestore firestore = FirebaseFirestore.instance;
       await firestore.collection(newItem['type'].toLowerCase() + 's').add(newItem);
-      _fetchTasksFromFirestore();
+      _fetchTasksForType(newItem['type']);
       _showSnackBarMessage('Successfully created!');
     }
   }
@@ -75,6 +59,7 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
       context,
       MaterialPageRoute(
         builder: (context) => EditTaskScreen(
+          docId: item['docId'],
           type: item['type'],
           title: item['title'],
           description: item['description'],
@@ -85,152 +70,132 @@ class _AssignmentScreenState extends State<AssignmentScreen> with SingleTickerPr
       ),
     );
 
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-    final String docId = item['docId'];
-
     if (result != null && result is Map<String, dynamic>) {
-      await firestore.collection(result['type'].toLowerCase() + 's').doc(docId).set(result);
-      _fetchTasksFromFirestore();
-      _showSnackBarMessage('Successfully updated!');
-    } else if (result == 'delete') {
-      await firestore.collection(item['type'].toLowerCase() + 's').doc(docId).delete();
-      _fetchTasksFromFirestore();
-      _showSnackBarMessage('Successfully deleted!');
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      final String docId = item['docId'];
+      String oldType = item['type'];
+
+      if (result['action'] == 'update') {
+        String newType = result['updatedItem']['type'];
+        if (oldType != newType) {
+          await firestore.collection(oldType.toLowerCase() + 's').doc(docId).delete();
+        }
+        await firestore.collection(newType.toLowerCase() + 's').doc(docId).set(result['updatedItem']);
+        _fetchTasksForType(oldType);
+        _fetchTasksForType(newType);
+        _showSnackBarMessage('Successfully updated!');
+      } else if (result['action'] == 'delete') {
+        await firestore.collection(oldType.toLowerCase() + 's').doc(docId).delete();
+        _fetchTasksForType(oldType);
+        _showSnackBarMessage('Successfully deleted!');
+      }
     }
   }
 
   void _showSnackBarMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  Widget _buildAssignmentList() {
-    return ListView(
-      padding: EdgeInsets.all(16.0),
-      children: assignments.map((assignment) {
-        return _buildListItem(assignment);
-      }).toList(),
-    );
-  }
-
-  Widget _buildExamList() {
-    return ListView(
-      padding: EdgeInsets.all(16.0),
-      children: exams.map((exam) {
-        return _buildListItem(exam);
-      }).toList(),
-    );
-  }
-
-  Widget _buildQuizList() {
-    return ListView(
-      padding: EdgeInsets.all(16.0),
-      children: quizzes.map((quiz) {
-        return _buildListItem(quiz);
-      }).toList(),
-    );
-  }
-
-  Widget _buildListItem(Map<String, dynamic> item) {
-    return GestureDetector(
-      onTap: () {
-        _navigateToEditTask(item);
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 8.0),
-        padding: EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4.0,
-              spreadRadius: 2.0,
-              offset: Offset(2, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item['title'],
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87)),
-            SizedBox(height: 5),
-            Text(item['description'],
-                style: TextStyle(fontSize: 14, color: Colors.black54)),
-            SizedBox(height: 5),
-            Text(item['dueDate'],
-                style: TextStyle(fontSize: 12, color: Colors.black45)),
-            SizedBox(height: 5),
-            if (item['imageUrl'] != null && item['imageUrl'].isNotEmpty)
-              Container(
-                height: 100.0, // set your desired height
-                width: 100.0,  // set your desired width
-                child: Image.network(
-                  item['imageUrl'],
-                  fit: BoxFit.cover,
-                ),
-              ),
-            if (item['reminder'] == true)
-              Text('Reminder set',
-                  style: TextStyle(fontSize: 12, color: Colors.red)),
-          ],
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Assignments & Exams', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue[800],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.orangeAccent,
-          tabs: [
-            Tab(text: 'Assignments'),
-            Tab(text: 'Exams'),
-            Tab(text: 'Quizzes'),
-          ],
-        ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.blue[300]!,
-              Colors.green[300]!,
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Assignments & Exams', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.blue[800],
+          bottom: TabBar(
+            indicatorColor: Colors.orangeAccent,
+            tabs: [
+              Tab(text: 'Assignments'),
+              Tab(text: 'Exams'),
+              Tab(text: 'Quizzes'),
             ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
           ),
         ),
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildAssignmentList(),
-            _buildExamList(),
-            _buildQuizList(),
-          ],
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.blue[300]!,
+                Colors.green[300]!,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: TabBarView(
+            children: [
+              _buildTaskList(assignments),
+              _buildTaskList(exams),
+              _buildTaskList(quizzes),
+            ],
+          ),
         ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _navigateToCreateAssignment,
+          child: Icon(Icons.add),
+          backgroundColor: Colors.orangeAccent,
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToCreateAssignment,
-        child: Icon(Icons.add, color: Colors.white),
-        backgroundColor: Colors.orangeAccent,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildTaskList(List<Map<String, dynamic>> tasks) {
+    return ListView.builder(
+      itemCount: tasks.length,
+      itemBuilder: (context, index) {
+        final item = tasks[index];
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          padding: EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 4,
+                offset: Offset(0, 2), // changes position of shadow
+              ),
+            ],
+          ),
+          child: ListTile(
+            title: Text(item['title']),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item['description']),
+                SizedBox(height: 5),
+                Text(
+                  DateTime.parse(item['dueDate']).toLocal().toString(),
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                if (item['reminder'] == true)
+                  Row(
+                    children: [
+                      Icon(Icons.notifications, color: Colors.red, size: 16),
+                      SizedBox(width: 5),
+                      Text('Reminder set', style: TextStyle(fontSize: 12, color: Colors.red)),
+                    ],
+                  ),
+                if (item['imageUrl'] != null && item['imageUrl'].isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Image.network(
+                      item['imageUrl'],
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+              ],
+            ),
+            onTap: () => _navigateToEditTask(item),
+          ),
+        );
+      },
     );
   }
 }

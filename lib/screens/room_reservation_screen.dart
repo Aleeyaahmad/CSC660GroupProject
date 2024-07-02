@@ -12,7 +12,7 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
   String? _selectedRoomNumber;
   String? _selectedDate;
   String? _selectedLecturer;
-  List<Map<String, String>> _reservations = []; // Store reservations locally
+  List<Map<String, dynamic>> _reservations = [];
 
   final CollectionReference _reservationsCollection =
       FirebaseFirestore.instance.collection('reservations');
@@ -20,34 +20,73 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
   @override
   void initState() {
     super.initState();
-    // Load existing reservations when the screen initializes
     _loadReservations();
   }
 
-  // Method to load reservations from Firestore
   void _loadReservations() async {
-  try {
-    final querySnapshot = await _reservationsCollection.get();
-    setState(() {
-      _reservations = querySnapshot.docs.map((doc) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        return {
-          'building': data['building'] as String,
-          'room': data['room'] as String,
-          'date': data['date'] as String,
-          'lecturer': data['lecturer'] as String,
-        };
-      }).toList();
-    });
-  } catch (e) {
-    print('Error fetching reservations: $e');
-    setState(() {
-      _reservations = []; // Ensure _reservations is initialized
-    });
+    try {
+      final querySnapshot = await _reservationsCollection.get();
+      setState(() {
+        _reservations = querySnapshot.docs.map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          return {
+            'id': doc.id,
+            'building': data['building'] as String,
+            'room': data['room'] as String,
+            'date': data['date'] as String,
+            'lecturer': data['lecturer'] as String,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      print('Error fetching reservations: $e');
+      setState(() {
+        _reservations = [];
+      });
+    }
   }
-}
 
-  // Define room options based on selected building
+  Future<void> _confirmAndDeleteReservation(String id) async {
+    final bool? confirmDelete = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete this reservation?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: Text('Delete'),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmDelete == true) {
+      try {
+        await _reservationsCollection.doc(id).delete();
+        _loadReservations(); // Reload reservations after deletion
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Reservation deleted successfully')),
+        );
+      } catch (e) {
+        print('Failed to delete reservation: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete reservation')),
+        );
+      }
+    }
+  }
+
   List<String> getRoomOptions(String building) {
     switch (building) {
       case 'Building A':
@@ -70,7 +109,7 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Room Reservation', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue[800], // Adjusted AppBar color to better match the gradient theme
+        backgroundColor: Colors.blue[800],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -127,7 +166,6 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                         onChanged: (newValue) {
                           setState(() {
                             _selectedBuilding = newValue;
-                            // Reset room selection when building changes
                             _selectedRoomNumber = null;
                           });
                         },
@@ -234,19 +272,20 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                           _selectedRoomNumber != null &&
                           _selectedDate != null &&
                           _selectedLecturer != null) {
-                        // Check for duplicate reservations
-                        bool isDuplicate = _reservations.any((reservation) =>
-                            reservation['building'] == _selectedBuilding &&
-                            reservation['room'] == _selectedRoomNumber &&
-                            reservation['date'] == _selectedDate);
-
-                        if (isDuplicate) {
+                        final existingReservation = _reservations.firstWhere(
+                          (reservation) =>
+                              reservation['building'] == _selectedBuilding &&
+                              reservation['room'] == _selectedRoomNumber &&
+                              reservation['date'] == _selectedDate,
+                          orElse: () => {},
+                        );
+                        if (existingReservation.isNotEmpty) {
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: Text('Duplicate Reservation'),
-                                content: Text('This reservation already exists.'),
+                                title: Text('Error'),
+                                content: Text('This room is already reserved on this date.'),
                                 actions: <Widget>[
                                   TextButton(
                                     child: Text('OK'),
@@ -260,50 +299,67 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                           );
                         } else {
                           _reservationsCollection.add({
-                            'building': _selectedBuilding!,
-                            'room': _selectedRoomNumber!,
-                            'date': _selectedDate!,
-                            'lecturer': _selectedLecturer!,
-                          }).then((value) {
-                            setState(() {
-                              _reservations.add({
-                                'building': _selectedBuilding!,
-                                'room': _selectedRoomNumber!,
-                                'date': _selectedDate!,
-                                'lecturer': _selectedLecturer!,
-                              });
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Reservation saved successfully')),
+                            'building': _selectedBuilding,
+                            'room': _selectedRoomNumber,
+                            'date': _selectedDate,
+                            'lecturer': _selectedLecturer,
+                          }).then((_) {
+                            _loadReservations();
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text('Success'),
+                                  content: Text('Reservation saved successfully!'),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      child: Text('OK'),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
                             );
                           }).catchError((error) {
                             print('Failed to add reservation: $error');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to save reservation')),
-                            );
                           });
                         }
                       } else {
-                        // Show a message if not all fields are selected
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Please fill all fields')),
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('Error'),
+                              content: Text('Please fill in all fields.'),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text('OK'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
                         );
                       }
                     },
-                    child: Row(
-                      children: [
-                        Icon(Icons.save, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Save', style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700], // Blue for button
+                      backgroundColor: Colors.green[800],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      textStyle: TextStyle(fontSize: 18),
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.save, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('SAVE', style: TextStyle(color: Colors.white)),
+                      ],
                     ),
                   ),
                   ElevatedButton(
@@ -315,32 +371,49 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => SearchRoomReservationScreen(
-                              building: _selectedBuilding!,
-                              room: _selectedRoomNumber!,
+                              selectedBuilding: _selectedBuilding!,
+                              selectedRoomNumber: _selectedRoomNumber!,
+                              selectedDate: _selectedDate!,
+                              room: '',
+                              date: '',
+                              building: '',
                             ),
                           ),
                         );
                       } else {
-                        // Show a message if not all fields are selected
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Please fill all fields')),
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('Error'),
+                              content: Text('Please fill in the building, room number, and date.'),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text('OK'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
                         );
                       }
                     },
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Search', style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700], // Green for button
+                      backgroundColor: Colors.green[700],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      textStyle: TextStyle(fontSize: 18),
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('SEARCH', style: TextStyle(color: Colors.white)),
+                      ],
                     ),
                   ),
                 ],
@@ -351,25 +424,38 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                   itemCount: _reservations.length,
                   itemBuilder: (context, index) {
                     final reservation = _reservations[index];
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 20),
-                      width: double.infinity,
-                      child: Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    return Card(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          'Building: ${reservation['building']}',
+                          style: TextStyle(color: Colors.black54),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Building: ${reservation['building']}", style: TextStyle(color: Colors.black87)),
-                              Text("Room: ${reservation['room']}", style: TextStyle(color: Colors.black87)),
-                              Text("Date: ${reservation['date']}", style: TextStyle(color: Colors.black87)),
-                              Text("Lecturer: ${reservation['lecturer']}", style: TextStyle(color: Colors.black87)),
-                            ],
-                          ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Room: ${reservation['room']}',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            Text(
+                              'Date: ${reservation['date']}',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            Text(
+                              'Lecturer: ${reservation['lecturer']}',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            _confirmAndDeleteReservation(reservation['id']);
+                          },
                         ),
                       ),
                     );

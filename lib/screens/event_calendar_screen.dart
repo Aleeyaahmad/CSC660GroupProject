@@ -128,6 +128,40 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
     });
   }
 
+  Future<void> _confirmDeleteEvent(Event event) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Delete'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Are you sure you want to delete this event?'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Delete'),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _deleteEvent(event);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -239,7 +273,7 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
                     endTime: _selectedEvents[index].endTime,
                     color: Colors.blue[100]!,
                     onDelete: () {
-                      _deleteEvent(_selectedEvents[index]);
+                      _confirmDeleteEvent(_selectedEvents[index]);
                     },
                   );
                 },

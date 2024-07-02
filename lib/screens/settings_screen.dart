@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../theme_provider.dart'; // Import the theme provider
 
@@ -35,7 +36,8 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             title: Text('Logout'),
             leading: Icon(Icons.exit_to_app),
-            onTap: () {
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
               Navigator.pushNamedAndRemoveUntil(
                   context, '/login', (Route<dynamic> route) => false);
             },
