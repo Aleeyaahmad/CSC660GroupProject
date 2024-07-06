@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:badges/badges.dart' as badges;
 import 'notifications_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -9,10 +13,37 @@ class DashboardScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         title: Text('Dashboard', style: TextStyle(color: Colors.black)),
         actions: [
-          IconButton(
-            icon: Icon(Icons.notifications, size: 35, color: Colors.blueAccent), // Increased size and changed color
-            onPressed: () {
-              Navigator.pushNamed(context, '/notifications');
+          StreamBuilder<QuerySnapshot>(
+            stream: _firestore.collection('notifications').snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return IconButton(
+                  icon: Icon(Icons.notifications, size: 35, color: Colors.blueAccent),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/notifications');
+                  },
+                );
+              }
+
+              return badges.Badge(
+                position: badges.BadgePosition.topEnd(top: 0, end: 3),
+                badgeStyle: badges.BadgeStyle(
+                  shape: badges.BadgeShape.circle,
+                  badgeColor: Colors.red,
+                  padding: EdgeInsets.all(5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                badgeContent: Text(
+                  snapshot.data!.docs.length.toString(),
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.notifications, size: 35, color: Colors.blueAccent),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/notifications');
+                  },
+                ),
+              );
             },
           ),
         ],
@@ -20,20 +51,9 @@ class DashboardScreen extends StatelessWidget {
       drawer: Drawer(
         child: Column(
           children: <Widget>[
-            UserAccountsDrawerHeader(
-              accountName: Text('NAME', style: TextStyle(color: Colors.white)),
-              accountEmail: null,
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.person,
-                  size: 50,
-                  color: Colors.grey,
-                ),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent,
-              ),
+            Container(
+              height: 100,
+              color: Colors.blueAccent,
             ),
             Expanded(
               child: ListView(
@@ -67,7 +87,7 @@ class DashboardScreen extends StatelessWidget {
               leading: Icon(Icons.logout, color: Colors.blueAccent),
               title: Text('Log out', style: TextStyle(color: Colors.black)),
               onTap: () {
-                Navigator.pushReplacementNamed(context, '/login'); // Navigate to login screen
+                Navigator.pushReplacementNamed(context, '/login');
               },
             ),
           ],
@@ -76,7 +96,7 @@ class DashboardScreen extends StatelessWidget {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF64B5F6), Color(0xFF00C853)], // Blue and green gradient colors
+            colors: [Color(0xFF64B5F6), Color(0xFF00C853)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -89,12 +109,12 @@ class DashboardScreen extends StatelessWidget {
               SizedBox(height: 20),
               Text(
                 'Hi, User!',
-                style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white), // Increased size of "Hi" and changed color to white
+                style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               SizedBox(height: 10),
               Text(
                 'Welcome back to your dashboard',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300, color: Colors.white), // Changed color to white
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300, color: Colors.white),
               ),
               SizedBox(height: 20),
               DashboardCard(
@@ -103,10 +123,10 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.pushNamed(context, '/event_calendar');
                 },
-                height: 120, // Slightly increased height
+                height: 120,
                 isFullWidth: true,
               ),
-              SizedBox(height: 8), // Reduced the space here
+              SizedBox(height: 8),
               Expanded(
                 child: Row(
                   children: [
@@ -117,10 +137,10 @@ class DashboardScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.pushNamed(context, '/room_reservation');
                         },
-                        height: double.infinity, // Make it fill the remaining vertical space
+                        height: double.infinity,
                       ),
                     ),
-                    SizedBox(width: 8), // Reduced the space here
+                    SizedBox(width: 8),
                     Expanded(
                       child: DashboardCard(
                         icon: Icons.book,
@@ -128,7 +148,7 @@ class DashboardScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.pushNamed(context, '/assignment');
                         },
-                        height: double.infinity, // Make it fill the remaining vertical space
+                        height: double.infinity,
                       ),
                     ),
                   ],
@@ -181,8 +201,8 @@ class DashboardCard extends StatelessWidget {
                   offset: Offset(2, 2),
                 ),
               ],
-              color: Colors.white, // Changed background color to white
-              border: Border.all(color: Colors.grey[300]!), // Added border to differentiate from background
+              color: Colors.white,
+              border: Border.all(color: Colors.grey[300]!),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -190,13 +210,13 @@ class DashboardCard extends StatelessWidget {
                 Icon(
                   icon,
                   size: 50,
-                  color: Colors.blueAccent, // Changed icon color
+                  color: Colors.blueAccent,
                 ),
                 SizedBox(height: 10),
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black), // Adjusted font weight and color
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black),
                 ),
               ],
             ),

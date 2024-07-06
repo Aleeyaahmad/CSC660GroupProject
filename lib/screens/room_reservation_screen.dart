@@ -16,6 +16,8 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
 
   final CollectionReference _reservationsCollection =
       FirebaseFirestore.instance.collection('reservations');
+  final CollectionReference _notificationsCollection = 
+      FirebaseFirestore.instance.collection('notifications');
 
   @override
   void initState() {
@@ -277,7 +279,7 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                               reservation['building'] == _selectedBuilding &&
                               reservation['room'] == _selectedRoomNumber &&
                               reservation['date'] == _selectedDate,
-                          orElse: () => {},
+                          orElse: () => <String, String>{},
                         );
                         if (existingReservation.isNotEmpty) {
                           showDialog(
@@ -305,6 +307,7 @@ class _RoomReservationScreenState extends State<RoomReservationScreen> {
                             'lecturer': _selectedLecturer,
                           }).then((_) {
                             _loadReservations();
+                            FirebaseFirestore.instance.collection('notifications').add({ 'type': 'room_reservation', 'title': 'New Room Reservation', 'subtitle': 'Room $_selectedRoomNumber in $_selectedBuilding has been reserved by $_selectedLecturer on $_selectedDate', 'timestamp': FieldValue.serverTimestamp(), });
                             showDialog(
                               context: context,
                               builder: (BuildContext context) {

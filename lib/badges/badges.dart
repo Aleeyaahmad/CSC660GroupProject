@@ -25,23 +25,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             stream: _firestore.collection('notifications').snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return IconButton(
-                  icon: Icon(Icons.notifications),
-                  onPressed: () {},
-                );
+                return Container();
               }
 
               return badges.Badge(
-                position: badges.BadgePosition.topEnd(top: 0, end: 3),
-                badgeStyle: badges.BadgeStyle(
-                  shape: badges.BadgeShape.circle,
-                  badgeColor: Colors.red,
-                  padding: EdgeInsets.all(5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
                 badgeContent: Text(
                   snapshot.data!.docs.length.toString(),
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: Colors.white),
                 ),
                 child: IconButton(
                   icon: Icon(Icons.notifications),
@@ -84,7 +74,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 child: NotificationCard(
                   icon: Icons.event,
                   title: notification['title'],
-                  subtitle: notification['subtitle'] ?? '', // Provide a default value if subtitle is null
+                  subtitle: notification['subtitle'],
                   onDelete: () => _deleteNotification(notification),
                 ),
               );
@@ -130,7 +120,7 @@ class NotificationCard extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        subtitle: Text(subtitle), // Display an empty string if subtitle is null
+        subtitle: Text(subtitle),
         contentPadding: EdgeInsets.all(16),
         trailing: IconButton(
           icon: Icon(Icons.delete, color: Colors.red),
@@ -143,4 +133,3 @@ class NotificationCard extends StatelessWidget {
     );
   }
 }
-

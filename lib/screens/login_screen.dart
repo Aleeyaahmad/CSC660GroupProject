@@ -14,17 +14,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _passwordError;
 
   @override
-  void initState() {
-    super.initState();
-    // Check if user is already logged in
-    if (FirebaseAuth.instance.currentUser != null) {
-      WidgetsBinding.instance?.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(

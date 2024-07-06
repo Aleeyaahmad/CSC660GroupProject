@@ -85,23 +85,32 @@ class _EventCalendarScreenState extends State<EventCalendarScreen> {
     });
   }
 
+  Future<void> _addNotification(Event event) async {
+  await _firestore.collection('notifications').add({
+    'title': 'New Event Created',
+    'subtitle': 'Event: ${event.eventName} on ${event.date.day}/${event.date.month}/${event.date.year} from ${event.startTime} to ${event.endTime}',
+    'timestamp': FieldValue.serverTimestamp(),
+  });
+}
+
   List<Event> _getEventsForDay(DateTime day) {
     return _events[DateTime.utc(day.year, day.month, day.day)] ?? [];
   }
 
   Future<void> _addEvent(Event event) async {
-    await _firestore.collection('events').add(event.toMap());
-    setState(() {
-      DateTime eventDate = DateTime.utc(event.date.year, event.date.month, event.date.day);
-      if (_events[eventDate] == null) {
-        _events[eventDate] = [];
-      }
-      _events[eventDate]!.add(event);
-      if (_selectedDay == eventDate) {
-        _selectedEvents = _events[eventDate]!;
-      }
-    });
-  }
+  await _firestore.collection('events').add(event.toMap());
+  await _addNotification(event); // Add this line
+  setState(() {
+    DateTime eventDate = DateTime.utc(event.date.year, event.date.month, event.date.day);
+    if (_events[eventDate] == null) {
+      _events[eventDate] = [];
+    }
+    _events[eventDate]!.add(event);
+    if (_selectedDay == eventDate) {
+      _selectedEvents = _events[eventDate]!;
+    }
+  });
+}
 
   Future<void> _deleteEvent(Event event) async {
     QuerySnapshot snapshot = await _firestore

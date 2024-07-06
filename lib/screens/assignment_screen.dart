@@ -30,6 +30,7 @@ class _AssignmentScreenState extends State<AssignmentScreen> {
     List<Map<String, dynamic>> fetchedItems = snapshot.docs.map((doc) {
       var data = doc.data() as Map<String, dynamic>;
       data['docId'] = doc.id;
+      data['type'] = type; // Ensure the type is set correctly
       return data;
     }).toList();
 
@@ -49,7 +50,17 @@ class _AssignmentScreenState extends State<AssignmentScreen> {
     if (newItem != null && newItem is Map<String, dynamic>) {
       final FirebaseFirestore firestore = FirebaseFirestore.instance;
       await firestore.collection(newItem['type'].toLowerCase() + 's').add(newItem);
-      _fetchTasksForType(newItem['type']);
+
+      setState(() {
+        if (newItem['type'] == 'Assignment') {
+          assignments.add(newItem); // Add to assignments list
+        } else if (newItem['type'] == 'Exam') {
+          exams.add(newItem); // Add to exams list
+        } else if (newItem['type'] == 'Quiz') {
+          quizzes.add(newItem); // Add to quizzes list
+        }
+      });
+
       _showSnackBarMessage('Successfully created!');
     }
   }
